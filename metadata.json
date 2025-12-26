@@ -1,0 +1,8 @@
+{
+  "name": "AI Planet Math Mentor",
+  "description": "Production-grade Multimodal Math Mentor for JEE-level calculus, algebra, and probability. Features multi-agent orchestration, HITL verification, and RAG-based reasoning.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

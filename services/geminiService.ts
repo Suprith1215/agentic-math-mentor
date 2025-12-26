@@ -67,7 +67,7 @@ export const runParserAgent = async (
   
   let parts = [];
   
-  // Construct parts array carefully. CRITICAL: Media should often come before text prompts.
+  // Construct parts array. Media MUST be first for the model to attend to it properly.
   if (mode === 'TEXT') {
     parts.push({ text: "Analyze the following math problem text:" });
     parts.push({ text: inputData as string });
@@ -78,7 +78,8 @@ export const runParserAgent = async (
   } else if (mode === 'AUDIO') {
     // @ts-ignore
     parts.push(inputData); // Audio First
-    parts.push({ text: "Listen to this audio. It contains a math problem. Transcribe the math problem exactly. Normalize terms like 'root' to symbols. Return a valid JSON response." });
+    // Stronger prompt for audio transcription
+    parts.push({ text: "Listen carefully to this audio file. It contains a spoken math problem. Transcribe it word-for-word into mathematical notation (e.g. 'root x' -> 'sqrt(x)'). Ignore background noise. Return the structure in JSON." });
   }
 
   const prompt = `
@@ -153,25 +154,31 @@ export const runSolverOrchestration = async (
     : "No specific past memory for this topic.";
 
   // 2. Construct Adaptive Instruction
-  const baseInstruction = explanationLevel === 'Beginner'
-    ? "Provide extremely detailed, beginner-friendly explanations."
-    : "Provide concise, advanced explanations.";
-
-  const adaptiveInstruction = `
-    USER PROFILE:
-    - Topic: ${problem.topic}
-    - Mastery Level: ${topicMastery}%
-    - Known Weaknesses: ${userMistakes}
-    
-    ADAPTIVE INSTRUCTION:
-    Combine the manual setting (${explanationLevel}) with the User Profile.
-    ${topicMastery < 40 ? "User is struggling. Simplify jargon, verify every algebra step, and warn about common mistakes." : ""}
-    ${topicMastery > 80 ? "User is advanced. Focus on 'Why' rather than 'How', and skip trivial arithmetic." : ""}
-    
-    LEARNING MEMORY (RAG PRIORITY):
-    Prioritize these successful patterns from past interactions:
-    ${memoryContext}
-  `;
+  // CRITICAL: This logic drives the explanation depth
+  let personaInstruction = "";
+  if (topicMastery < 40 || explanationLevel === 'Beginner') {
+      personaInstruction = `
+      MODE: TUTOR (For Beginners)
+      - Break down every single step. Do not skip arithmetic.
+      - Define terms like 'derivative', 'integral', 'probability' when used first.
+      - Use analogies.
+      - Tone: Encouraging, patient, detailed.
+      `;
+  } else if (topicMastery > 80 || explanationLevel === 'Advanced') {
+      personaInstruction = `
+      MODE: PEER (For Experts)
+      - Skip trivial arithmetic (like simple addition/multiplication).
+      - Focus on the 'Key Insight' or the 'Trick' to solve the problem.
+      - Use dense mathematical notation.
+      - Tone: Concise, professional, fast.
+      `;
+  } else {
+      personaInstruction = `
+      MODE: GUIDE (Intermediate)
+      - Balance detail and brevity.
+      - Verify complex steps, skip obvious ones.
+      `;
+  }
 
   const prompt = `
     You are a Multi-Agent Math Mentor System composed of Solver, Verifier, RAG, and Explainer Agents.
@@ -180,23 +187,27 @@ export const runSolverOrchestration = async (
     Topic: ${problem.topic}
     Constraints: ${problem.constraints.join(', ')}
     
-    ${baseInstruction}
-    ${adaptiveInstruction}
+    USER CONTEXT:
+    - Mastery in ${problem.topic}: ${topicMastery}%
+    - Past Mistakes: ${userMistakes}
+    
+    ${personaInstruction}
+    
+    LEARNING MEMORY (RAG):
+    ${memoryContext}
 
     Perform the following:
     1. Plan the solution.
-    2. Retrieve relevant JEE formulas (simulate RAG). Prioritize the Learning Memory provided above.
-    3. Solve step-by-step.
-    4. Verify the answer.
-    5. Retrieve/Generate 2-3 similar past JEE problems.
-    6. [Dynamic Memory]: If this problem uses a unique trick or if the user frequently errs here, generate a brief "insight" string to save to Learning Memory.
+    2. Solve step-by-step according to the MODE defined above.
+    3. Verify the answer.
+    4. [Dynamic Memory]: If this problem uses a unique trick, generate a brief insight string.
 
     JSON Schema:
     {
       "finalAnswer": "The final concise answer",
       "verificationStatus": "verified" | "uncertain" | "failed",
       "steps": [
-        { "stepNumber": 1, "explanation": "...", "formula": "latex_if_needed" }
+        { "stepNumber": 1, "explanation": "Actual explanation text...", "formula": "Latex string" }
       ],
       "ragSources": [
         { "title": "Name of Theorem/Formula", "snippet": "Definition...", "relevance": 0.95, "isSynthetic": false }
@@ -204,7 +215,7 @@ export const runSolverOrchestration = async (
       "similarProblems": [
         { "id": "1", "problemText": "Similar problem statement", "topic": "Calculus", "difficulty": "Medium" }
       ],
-      "generatedMemory": "Optional short string of new insight to learn, e.g., 'Use Log properties for exponential limits'"
+      "generatedMemory": "Optional short string of new insight to learn"
     }
   `;
 

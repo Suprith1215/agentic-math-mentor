@@ -1,6 +1,6 @@
 import React from 'react';
 import { Solution, MathProblem } from '../types';
-import { BookOpen, Check, AlertTriangle, Lightbulb, BarChart2, ArrowRight, Brain } from 'lucide-react';
+import { BookOpen, Check, AlertTriangle, Lightbulb, BarChart2, ArrowRight, Brain, Zap, GraduationCap } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface SolutionViewProps {
@@ -24,13 +24,18 @@ const SolutionView: React.FC<SolutionViewProps> = ({ problem, solution, onReset,
       {/* Header Summary */}
       <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-6">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-3">
             <span className="px-2 py-0.5 rounded text-xs font-bold bg-brand-100 text-brand-700 uppercase">
               {problem.topic}
             </span>
             <span className="px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-600">
               {problem.complexity}
             </span>
+            {/* Adaptive Indicator */}
+            <div className="ml-auto md:ml-2 flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">
+               <GraduationCap size={12} />
+               <span>Adaptive Explanation Active</span>
+            </div>
           </div>
           <h2 className="text-xl font-bold text-slate-800 mb-2 font-mono">
             {problem.parsedText}
@@ -57,10 +62,12 @@ const SolutionView: React.FC<SolutionViewProps> = ({ problem, solution, onReset,
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Solution Steps */}
         <div className="lg:col-span-2 space-y-4">
-          <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-            <Lightbulb className="text-yellow-500" size={20} />
-            Step-by-Step Explanation
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+              <Lightbulb className="text-yellow-500" size={20} />
+              Step-by-Step Explanation
+            </h3>
+          </div>
           
           <div className="space-y-4">
             {solution.steps.map((step) => (
@@ -73,7 +80,7 @@ const SolutionView: React.FC<SolutionViewProps> = ({ problem, solution, onReset,
                   <div>
                     <p className="text-slate-700 leading-relaxed">{step.explanation}</p>
                     {step.formula && (
-                      <div className="mt-3 p-3 bg-slate-50 rounded text-slate-800 font-mono text-sm overflow-x-auto">
+                      <div className="mt-3 p-3 bg-slate-50 rounded text-slate-800 font-mono text-sm overflow-x-auto border border-slate-100">
                         {step.formula}
                       </div>
                     )}
@@ -123,10 +130,12 @@ const SolutionView: React.FC<SolutionViewProps> = ({ problem, solution, onReset,
             </h3>
             <div className="space-y-3">
               {solution.ragSources.map((source, idx) => (
-                <div key={idx} className="p-3 bg-slate-50 rounded border border-slate-100 text-sm">
+                <div key={idx} className="p-3 bg-slate-50 rounded border border-slate-100 text-sm hover:shadow-sm transition-shadow">
                   <div className="flex justify-between items-start mb-1">
                     <span className="font-semibold text-slate-700">{source.title}</span>
-                    <span className="text-xs text-brand-600 font-medium">{(source.relevance * 100).toFixed(0)}% Match</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">
+                      {(source.relevance * 100).toFixed(0)}% Match
+                    </span>
                   </div>
                   <p className="text-slate-500 text-xs line-clamp-2">{source.snippet}</p>
                 </div>
@@ -145,7 +154,7 @@ const SolutionView: React.FC<SolutionViewProps> = ({ problem, solution, onReset,
                 <BarChart data={complexityData} layout="vertical" margin={{ left: 10 }}>
                   <XAxis type="number" hide />
                   <YAxis dataKey="name" type="category" width={70} tick={{fontSize: 10}} />
-                  <Tooltip />
+                  <Tooltip cursor={{fill: 'transparent'}} />
                   <Bar dataKey="value" fill="#0ea5e9" radius={[0, 4, 4, 0]} barSize={20} />
                 </BarChart>
               </ResponsiveContainer>
@@ -154,8 +163,9 @@ const SolutionView: React.FC<SolutionViewProps> = ({ problem, solution, onReset,
 
           <button 
             onClick={onReset}
-            className="w-full py-3 bg-white border-2 border-slate-200 text-slate-600 font-semibold rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all"
+            className="w-full py-3 bg-white border-2 border-slate-200 text-slate-600 font-semibold rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-2"
           >
+            <Zap size={18} />
             Solve Another Problem
           </button>
         </div>

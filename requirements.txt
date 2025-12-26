@@ -1,7 +1,0 @@
-streamlit
-python-dotenv
-chromadb
-numpy
-pillow
-pytesseract
-openai
